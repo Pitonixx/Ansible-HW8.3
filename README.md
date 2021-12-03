@@ -1,33 +1,34 @@
+```yaml
 ---
-- name: Install Elasticsearch
+- name: Install Elasticsearch             # Play для установки и настройки Elasticsearch
   hosts: elasticsearch
-  handlers:
+  handlers:                               # хендлер перезапуска сервиса, активация автозапуска
    - name: restart Elasticsearch
      become: true
-     systemd:
-       name: elasticsearch
+     systemd:                         
+       name: elasticsearch          
        state: restarted
        enabled: true
-  tasks:
+  tasks:                           
    - name: Download Elasticsearch's rpm
-     get_url:
+     get_url:                             # скачивает пакет Elasticsearch в <dest>
        url: "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-{{ elk_stack_version }}-x86_64.rpm"
        dest: "/tmp/elasticsearch-{{ elk_stack_version }}-x86_64.rpm"
-     register: download_elastic
-     until: download_elastic is succeeded
+     register: download_elastic           # записывает результаты выполнения get_url в переменную download_elastic
+     until: download_elastic is succeeded # повторять get_url пока не выполнится удачно (не более 3х раз)
    - name: Install Elasticsearch
      become: true
-     yum:
+     yum:                                 # установка пакета <name>
        name: "/tmp/elasticsearch-{{ elk_stack_version }}-x86_64.rpm"
        state: present
    - name: Configure Elasticsearch
-     become: true
-     template:
+     become: true                         # повышение привилегий
+     template:                            # копировать файл конфигурации Elasticsearch из <src> в <dest>.
        src: elasticsearch.yml.j2
        dest: /etc/elasticsearch/elasticsearch.yml
-     notify: restart Elasticsearch
+     notify: restart Elasticsearch        # активация действия в handlers при наличии изменений в данном таске
 
-- name: Install Kibana
+- name: Install Kibana                    # Play установки и настройки Kibana (идентичен предыдущему)
   hosts: kibana
   handlers:
    - name: restart Kibana
@@ -55,7 +56,7 @@
        dest: /etc/kibana/kibana.yml
      notify: restart Kibana
 
-- name: Install Filebeat
+- name: Install Filebeat                  # Play установки и настройки Filebeat (идентичен предыдущему)
   hosts: filebeat
   handlers:
    - name: restart filebeat
@@ -82,12 +83,12 @@
        src: filebeat.yml.j2
        dest: /etc/filebeat/filebeat.yml
      notify: restart filebeat
-   - name: Set Filebeat systemwork
+   - name: Set Filebeat systemwork        # настройка filebeat на передачу в elasticsearch системных логов
      become: true
-     command:
+     command:                             # выполнение команды <cmd> из директории <chdir>       
        cmd: filebeat modules enable system
        chdir: /usr/share/filebeat/bin
-   - name: Load Kibana dashboard
+   - name: Load Kibana dashboard          # установка дашбордов в kibana
      become: true
      command:
        cmd: filebeat setup
@@ -95,3 +96,4 @@
      register: fb_setup
      until: fb_setup is succeeded
      notify: restart filebeat
+```
